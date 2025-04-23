@@ -1,46 +1,60 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <title>Biometric Login</title>
+  <meta charset="UTF-8">
+  <title>تسجيل الدخول بالبصمة</title>
 </head>
 <body>
-    <h1>Biometric Login Demo</h1>
-    <button onclick="register()">Register</button>
-    <button onclick="login()">Login</button>
+  <h1>أهلاً بك في تسجيل الدخول الذكي</h1>
 
-    <script>
-        const fp = async () => {
-            const hashBuffer = new TextEncoder().encode(navigator.userAgent);
-            const digest = await crypto.subtle.digest('SHA-256', hashBuffer);
-            return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
-        };
+  <button onclick="register()">تسجيل حساب جديد بالبصمة</button>
+  <button onclick="login()">تسجيل الدخول بالبصمة</button>
 
-        async function register() {
-            const fingerprint = await fp();
-            fetch('/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fingerprint, username: 'testuser' })
-            }).then(res => res.text()).then(alert);
+  <script>
+    // بصمة الجهاز باستخدام fingerprint البسيط
+    const generateFingerprint = async () => {
+      const hashBuffer = new TextEncoder().encode(navigator.userAgent);
+      const digest = await crypto.subtle.digest('SHA-256', hashBuffer);
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    };
+
+    // تسجيل بصمة المستخدم
+    async function register() {
+      const fingerprint = await generateFingerprint();
+      fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint, username: 'testuser' })
+      }).then(res => res.text()).then(alert);
+    }
+
+    // تسجيل الدخول باستخدام WebAuthn
+    async function login() {
+      if (!window.PublicKeyCredential) {
+        alert("جهازك لا يدعم تسجيل الدخول بالبصمة");
+        return;
+      }
+
+      try {
+        const cred = await navigator.credentials.get({
+          publicKey: {
+            challenge: new Uint8Array(32),
+            timeout: 60000,
+            userVerification: "preferred",
+          }
+        });
+
+        if (cred) {
+          alert("تم التعرف عليك! سيتم تسجيل الدخول...");
+          window.location.href = "/dashboard"; // صفحة المستخدم بعد تسجيل الدخول
+        } else {
+          alert("لم يتم التعرف على البصمة");
         }
-
-        async function login() {
-            const fingerprint = await fp();
-            fetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fingerprint })
-            }).then(res => res.json()).then(data => {
-                if (data.success) {
-                    alert('Welcome ' + data.user);
-                    // redirect if needed
-                } else {
-                    alert('User not recognized');
-                }
-            });
-        }
-    </script>
+      } catch (err) {
+        console.error(err);
+        alert("فشل التحقق بالبصمة");
+      }
+    }
+  </script>
 </body>
 </html>
