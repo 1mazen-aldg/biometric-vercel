@@ -1,0 +1,46 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Biometric Login</title>
+</head>
+<body>
+    <h1>Biometric Login Demo</h1>
+    <button onclick="register()">Register</button>
+    <button onclick="login()">Login</button>
+
+    <script>
+        const fp = async () => {
+            const hashBuffer = new TextEncoder().encode(navigator.userAgent);
+            const digest = await crypto.subtle.digest('SHA-256', hashBuffer);
+            return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+        };
+
+        async function register() {
+            const fingerprint = await fp();
+            fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fingerprint, username: 'testuser' })
+            }).then(res => res.text()).then(alert);
+        }
+
+        async function login() {
+            const fingerprint = await fp();
+            fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fingerprint })
+            }).then(res => res.json()).then(data => {
+                if (data.success) {
+                    alert('Welcome ' + data.user);
+                    // redirect if needed
+                } else {
+                    alert('User not recognized');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
